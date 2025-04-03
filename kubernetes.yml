@@ -1,0 +1,497 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: postgres-cluster
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: postgres-cluster
+type: Opaque
+data:
+  postgres-password: YWRtaW4xMjM=  # admin123 base64 encoded
+  replication-password: cGFzc3dvcmQ=  # password base64 encoded
+
+---
+# Persistent Volume Claims
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-master-data
+  namespace: postgres-cluster
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-slave1-data
+  namespace: postgres-cluster
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-slave2-data
+  namespace: postgres-cluster
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+# ConfigMap for postgres master configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-master-config
+  namespace: postgres-cluster
+data:
+  # Configuration files will be added here
+
+---
+# ConfigMap for postgres slave1 configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-slave1-config
+  namespace: postgres-cluster
+data:
+  # Configuration files will be added here
+
+---
+# ConfigMap for postgres slave2 configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-slave2-config
+  namespace: postgres-cluster
+data:
+  # Configuration files will be added here
+
+---
+# ConfigMap for pgpool configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgpool-config
+  namespace: postgres-cluster
+data:
+  pgpool.conf: |
+    # pgpool configuration
+
+---
+# Postgres Master Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-master
+  namespace: postgres-cluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-master
+  template:
+    metadata:
+      labels:
+        app: postgres-master
+    spec:
+      containers:
+      - name: postgres-master
+        image: postgres:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "postgresadmin"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: postgres-password
+        - name: POSTGRES_DB
+          value: "postgresdb"
+        - name: PGDATA
+          value: "/data"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /data
+        - name: postgres-config
+          mountPath: /config
+        - name: postgres-archive
+          mountPath: /mnt/server/archive
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgresadmin
+            - -d
+            - postgresdb
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-master-data
+      - name: postgres-config
+        configMap:
+          name: postgres-master-config
+      - name: postgres-archive
+        emptyDir: {}
+
+---
+# Postgres Master Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-master
+  namespace: postgres-cluster
+spec:
+  selector:
+    app: postgres-master
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# Postgres Slave1 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-slave1
+  namespace: postgres-cluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-slave1
+  template:
+    metadata:
+      labels:
+        app: postgres-slave1
+    spec:
+      containers:
+      - name: postgres-slave1
+        image: postgres:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "postgresadmin"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: postgres-password
+        - name: POSTGRES_DB
+          value: "postgresdb"
+        - name: PGDATA
+          value: "/data"
+        - name: REPLICATION_USER
+          value: "replication_user"
+        - name: REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: replication-password
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /data
+        - name: postgres-config
+          mountPath: /config
+        - name: postgres-archive
+          mountPath: /mnt/server/archive
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgresadmin
+            - -d
+            - postgresdb
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-slave1-data
+      - name: postgres-config
+        configMap:
+          name: postgres-slave1-config
+      - name: postgres-archive
+        emptyDir: {}
+
+---
+# Postgres Slave1 Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-slave1
+  namespace: postgres-cluster
+spec:
+  selector:
+    app: postgres-slave1
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# Postgres Slave2 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-slave2
+  namespace: postgres-cluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-slave2
+  template:
+    metadata:
+      labels:
+        app: postgres-slave2
+    spec:
+      containers:
+      - name: postgres-slave2
+        image: postgres:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "postgresadmin"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: postgres-password
+        - name: POSTGRES_DB
+          value: "postgresdb"
+        - name: PGDATA
+          value: "/data"
+        - name: REPLICATION_USER
+          value: "replication_user"
+        - name: REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: replication-password
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /data
+        - name: postgres-config
+          mountPath: /config
+        - name: postgres-archive
+          mountPath: /mnt/server/archive
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgresadmin
+            - -d
+            - postgresdb
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: postgres-slave2-data
+      - name: postgres-config
+        configMap:
+          name: postgres-slave2-config
+      - name: postgres-archive
+        emptyDir: {}
+
+---
+# Postgres Slave2 Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-slave2
+  namespace: postgres-cluster
+spec:
+  selector:
+    app: postgres-slave2
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+# Pgpool Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgpool-loadbalancer
+  namespace: postgres-cluster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgpool-loadbalancer
+  template:
+    metadata:
+      labels:
+        app: pgpool-loadbalancer
+    spec:
+      containers:
+      - name: pgpool-loadbalancer
+        image: bitnami/pgpool:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: PGPOOL_BACKEND_NODES
+          value: "0:postgres-master:5432:0,1:postgres-slave1:5432:2,2:postgres-slave2:5432:2"
+        - name: PGPOOL_SR_CHECK_USER
+          value: "replication_user"
+        - name: PGPOOL_SR_CHECK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: replication-password
+        - name: PGPOOL_HEALTH_CHECK_USER
+          value: "replication_user"
+        - name: PGPOOL_HEALTH_CHECK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: replication-password
+        - name: PGPOOL_HEALTH_CHECK_PERIOD
+          value: "30"
+        - name: PGPOOL_HEALTH_CHECK_TIMEOUT
+          value: "10"
+        - name: PGPOOL_HEALTH_CHECK_MAX_RETRIES
+          value: "3"
+        - name: PGPOOL_ADMIN_USERNAME
+          value: "admin"
+        - name: PGPOOL_ADMIN_PASSWORD
+          value: "password"
+        - name: PGPOOL_POSTGRES_USERNAME
+          value: "postgresadmin"
+        - name: PGPOOL_POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: postgres-password
+        - name: PGPOOL_ENABLE_LOAD_BALANCING
+          value: "yes"
+        - name: PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT
+          value: "yes"
+        - name: PGPOOL_ENABLE_LOG_CONNECTIONS
+          value: "yes"
+        - name: PGPOOL_BACKEND_APPLICATION_NAME
+          value: "pgpool"
+        - name: PGPOOL_BACKEND_FLOW_CONTROL
+          value: "yes"
+        - name: PGPOOL_BACKEND_KEEPALIVE
+          value: "yes"
+        - name: PGPOOL_BACKEND_KEEPALIVE_COUNT
+          value: "3"
+        - name: PGPOOL_BACKEND_KEEPALIVE_INTERVAL
+          value: "30"
+        - name: PGPOOL_BACKEND_KEEPALIVE_MODE
+          value: "transaction"
+        - name: PGPOOL_CONNECT_TIMEOUT
+          value: "30"
+        - name: PGPOOL_SOCKET_TIMEOUT
+          value: "30"
+        - name: PGPOOL_POOL_MODE
+          value: "transaction"
+        - name: PGPOOL_MAX_POOL
+          value: "4"
+        - name: PGPOOL_NUM_INIT_CHILDREN
+          value: "32"
+        - name: PGPOOL_CHILD_LIFE_TIME
+          value: "300"
+        - name: PGPOOL_CHILD_MAX_CONNECTIONS
+          value: "1000"
+        - name: PGPOOL_MEMORY_CACHE_ENABLED
+          value: "yes"
+        - name: PGPOOL_MEMQCACHE_METHOD
+          value: "shmem"
+        - name: PGPOOL_MEMQCACHE_TOTAL_SIZE
+          value: "512MB"
+        - name: PGPOOL_MEMQCACHE_MAX_NUM_CACHE
+          value: "10000"
+        - name: PGPOOL_MEMQCACHE_EXPIRE
+          value: "300"
+        - name: PGPOOL_MEMQCACHE_AUTO_CACHE_INVALIDATION
+          value: "yes"
+        - name: PGPOOL_MEMQCACHE_MAXCACHE
+          value: "400KB"
+        - name: PGPOOL_MEMQCACHE_CACHE_BLOCK_SIZE
+          value: "1MB"
+        - name: PGPOOL_WHITE_MEMQCACHE_TABLE_LIST
+          value: ""
+        - name: PGPOOL_BLACK_MEMQCACHE_TABLE_LIST
+          value: ""
+        volumeMounts:
+        - name: pgpool-config
+          mountPath: /opt/bitnami/pgpool/conf
+        - name: pgpool-config-template
+          mountPath: /config-template
+        - name: pgpool-certs
+          mountPath: /opt/bitnami/pgpool/certs
+        - name: pgpool-oiddir
+          mountPath: /var/log/pgpool/oiddir
+        command:
+        - /bin/bash
+        - -c
+        - |
+          cp /config-template/pgpool.conf /opt/bitnami/pgpool/conf/ || echo "No template found, using defaults"
+          exec /opt/bitnami/scripts/pgpool/entrypoint.sh /opt/bitnami/scripts/pgpool/run.sh
+      volumes:
+      - name: pgpool-config
+        emptyDir: {}
+      - name: pgpool-config-template
+        configMap:
+          name: pgpool-config
+      - name: pgpool-certs
+        emptyDir: {}
+      - name: pgpool-oiddir
+        emptyDir: {}
+
+---
+# Pgpool Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgpool-loadbalancer
+  namespace: postgres-cluster
+spec:
+  selector:
+    app: pgpool-loadbalancer
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: LoadBalancer 

@@ -1,3 +1,6 @@
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- -- Add timescale extension
 -- CREATE EXTENSION IF NOT EXISTS timescaledb;
 
