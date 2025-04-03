@@ -1,0 +1,136 @@
+networks:
+  postgres-cluster-network:
+    driver: bridge
+
+services:
+  postgres-master:
+    build:
+      context: ./master
+    container_name: postgres-master
+    environment:
+      POSTGRES_USER: postgresadmin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: postgresdb
+      PGDATA: /data
+    ports:
+      - "5000:5432"
+    volumes:
+      - ./master/pgdata:/data
+      - ./master/config:/config
+      - ./master/archive:/mnt/server/archive
+    networks:
+      - postgres-cluster-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgresadmin -d postgresdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-slave1:
+    build:
+      context: ./slave-1
+    container_name: postgres-slave1
+    environment:
+      POSTGRES_USER: postgresadmin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: postgresdb
+      PGDATA: /data
+      REPLICATION_USER: replication_user
+      REPLICATION_PASSWORD: password
+    ports:
+      - "5001:5432"
+    volumes:
+      - ./slave-1/pgdata:/data
+      - ./slave-1/config:/config
+      - ./slave-1/archive:/mnt/server/archive
+    networks:
+      - postgres-cluster-network
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgresadmin -d postgresdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-slave2:
+    build:
+      context: ./slave-2
+    container_name: postgres-slave2
+    environment:
+      POSTGRES_USER: postgresadmin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: postgresdb
+      PGDATA: /data
+      REPLICATION_USER: replication_user
+      REPLICATION_PASSWORD: password
+    ports:
+      - "5002:5432"
+    volumes:
+      - ./slave-2/pgdata:/data
+      - ./slave-2/config:/config
+      - ./slave-2/archive:/mnt/server/archive
+    networks:
+      - postgres-cluster-network
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgresadmin -d postgresdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgpool-loadbalancer:
+    # user: root
+    image: bitnami/pgpool:latest
+    container_name: pgpool-loadbalancer
+    ports:
+      - "6432:5432"
+    environment:
+      PGPOOL_BACKEND_NODES: 0:postgres-master:5432:0,1:postgres-slave1:5432:2,2:postgres-slave2:5432:2
+      PGPOOL_SR_CHECK_USER: replication_user
+      PGPOOL_SR_CHECK_PASSWORD: password
+      PGPOOL_HEALTH_CHECK_USER: replication_user
+      PGPOOL_HEALTH_CHECK_PASSWORD: password
+      PGPOOL_HEALTH_CHECK_PERIOD: 30
+      PGPOOL_HEALTH_CHECK_TIMEOUT: 10
+      PGPOOL_HEALTH_CHECK_MAX_RETRIES: 3
+      PGPOOL_ADMIN_USERNAME: admin
+      PGPOOL_ADMIN_PASSWORD: password
+      PGPOOL_POSTGRES_USERNAME: postgresadmin
+      PGPOOL_POSTGRES_PASSWORD: admin123
+      PGPOOL_ENABLE_LOAD_BALANCING: "yes"
+      PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: "yes"
+      PGPOOL_ENABLE_LOG_CONNECTIONS: "yes"
+      PGPOOL_BACKEND_APPLICATION_NAME: "pgpool"
+      PGPOOL_BACKEND_FLOW_CONTROL: "yes"
+      PGPOOL_BACKEND_KEEPALIVE: "yes"
+      PGPOOL_BACKEND_KEEPALIVE_COUNT: 3
+      PGPOOL_BACKEND_KEEPALIVE_INTERVAL: 30
+      PGPOOL_BACKEND_KEEPALIVE_MODE: "transaction"
+      PGPOOL_CONNECT_TIMEOUT: 30
+      PGPOOL_SOCKET_TIMEOUT: 30
+      PGPOOL_POOL_MODE: "transaction"
+      PGPOOL_MAX_POOL: 4
+      PGPOOL_NUM_INIT_CHILDREN: 32
+      PGPOOL_CHILD_LIFE_TIME: 300
+      PGPOOL_CHILD_MAX_CONNECTIONS: 1000
+      # PGPOOL_ENABLE_TLS: "yes"
+      # PGPOOL_TLS_CERT_FILE: /opt/bitnami/pgpool/certs/server.crt
+      # PGPOOL_TLS_KEY_FILE: /opt/bitnami/pgpool/certs/server.key
+    volumes:
+      - ./pgpool/certs:/opt/bitnami/pgpool/certs
+      # - ./pgpool/generate-certs.sh:/docker-entrypoint-initdb.d/generate-certs.sh
+    networks:
+      - postgres-cluster-network
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+      postgres-slave1:
+        condition: service_healthy
+      postgres-slave2:
+        condition: service_healthy
+    # entrypoint: ["/bin/bash", "-c", "/docker-entrypoint-initdb.d/generate-certs.sh && /opt/bitnami/scripts/pgpool/entrypoint.sh /opt/bitnami/scripts/pgpool/run.sh"]
+

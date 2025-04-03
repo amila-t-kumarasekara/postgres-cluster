@@ -1,0 +1,9 @@
+pgdata/
+archive/
+*.crt
+*.key
+*.csr
+*.pem
+*.csr
+*.pem
+*.csr
