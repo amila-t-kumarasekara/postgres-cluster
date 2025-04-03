@@ -117,11 +117,24 @@ services:
       PGPOOL_NUM_INIT_CHILDREN: 32
       PGPOOL_CHILD_LIFE_TIME: 300
       PGPOOL_CHILD_MAX_CONNECTIONS: 1000
+      # Memory Cache settings
+      PGPOOL_MEMORY_CACHE_ENABLED: "yes"
+      PGPOOL_MEMQCACHE_METHOD: "shmem"
+      PGPOOL_MEMQCACHE_TOTAL_SIZE: "512MB"
+      PGPOOL_MEMQCACHE_MAX_NUM_CACHE: "10000"
+      PGPOOL_MEMQCACHE_EXPIRE: "300"
+      PGPOOL_MEMQCACHE_AUTO_CACHE_INVALIDATION: "yes"
+      PGPOOL_MEMQCACHE_MAXCACHE: "400KB"
+      PGPOOL_MEMQCACHE_CACHE_BLOCK_SIZE: "1MB"
+      PGPOOL_WHITE_MEMQCACHE_TABLE_LIST: ""
+      PGPOOL_BLACK_MEMQCACHE_TABLE_LIST: ""
       # PGPOOL_ENABLE_TLS: "yes"
       # PGPOOL_TLS_CERT_FILE: /opt/bitnami/pgpool/certs/server.crt
       # PGPOOL_TLS_KEY_FILE: /opt/bitnami/pgpool/certs/server.key
     volumes:
       - ./pgpool/certs:/opt/bitnami/pgpool/certs
+      - ./pgpool/pgpool.conf:/opt/bitnami/pgpool/conf/pgpool.conf
+      - ./pgpool/oiddir:/var/log/pgpool/oiddir
       # - ./pgpool/generate-certs.sh:/docker-entrypoint-initdb.d/generate-certs.sh
     networks:
       - postgres-cluster-network
