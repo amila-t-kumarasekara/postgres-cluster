@@ -1,8 +1,11 @@
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- -- Add timescale extension
--- CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- Add timescale extension
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+-- Add vectorscale extension
+CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
 
 -- -- Add pg_pgbouncer extension
 -- CREATE EXTENSION IF NOT EXISTS pg_pgbouncer;   
