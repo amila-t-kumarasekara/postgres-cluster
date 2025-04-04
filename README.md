@@ -1,87 +1,236 @@
-# PostgreSQL Cluster with PgPool-II
+# PostgreSQL Cluster with Dynamic Read Replicas
 
-This repository contains a Docker-based PostgreSQL cluster setup with PgPool-II for load balancing. The cluster consists of:
-
-- 1 PostgreSQL master/primary node
-- 2 PostgreSQL slave/standby nodes for high availability
-- PgPool-II as a connection pooler and load balancer
-
-## Configuration with Environment Variables
-
-All the configuration values for this cluster are stored in the `.env` file. To customize the deployment, modify the variables in this file before starting the containers.
-
-### Main Environment Variables
-
-```
-# PostgreSQL Common Settings
-POSTGRES_USER=      # PostgreSQL admin username
-POSTGRES_PASSWORD=       # PostgreSQL admin password
-POSTGRES_DB=           # Default database name
-PGDATA=/data                  # Data directory inside containers
-
-# Replication Settings
-REPLICATION_USER=    # User for replication
-REPLICATION_PASSWORD=        # Password for replication user
-
-# Port Settings
-MASTER_PORT=5000                 # Master PostgreSQL exposed port
-SLAVE1_PORT=5001                 # Slave 1 PostgreSQL exposed port
-SLAVE2_PORT=5002                 # Slave 2 PostgreSQL exposed port
-PGPOOL_PORT=6432                 # PgPool exposed port
-
-# Authentication Settings
-PG_HBA_AUTH_METHOD=scram-sha-256   # Authentication method for external connections
-LOCAL_AUTH_METHOD=trust            # Authentication method for local connections
-```
-
-For additional PgPool configuration options, refer to the `.env` file.
-
-## Dynamic Configuration Generation
-
-The cluster uses dynamic configuration generation to create PostgreSQL configuration files based on the environment variables in the `.env` file. This ensures that all settings are consistent across the cluster.
-
-Two implementations are provided:
-
-1. **TypeScript Generator** (default): Used by the Docker Compose setup
-
-### Running the Configuration Generators Manually
-
-#### TypeScript Generator:
-```bash
-npm install
-npm run generate-configs
-```
-
-## Getting Started
-
-1. Ensure Docker and Docker Compose are installed on your system
-2. Clone this repository
-3. Customize the `.env` file if needed
-4. Start the cluster:
-
-```
-docker-compose up -d
-```
-
-5. Connect to the cluster via PgPool:
-
-```
-psql -h localhost -p 6432 -U postgresadmin -d postgresdb
-```
+This project sets up a PostgreSQL database cluster with a single master (primary) node and a configurable number of read-only slave (replica) nodes. The cluster is managed using Docker Compose, with a PgPool-II load balancer that can distribute read queries across replicas.
 
 ## Architecture
 
-- **postgres-master**: Primary database server that handles all write operations
-- **postgres-slave1, postgres-slave2**: Replica servers that handle read operations and provide high availability
-- **pgpool-loadbalancer**: Connection pooler and load balancer that distributes read queries to available nodes
+The cluster consists of the following components:
 
-## Scaling
+- **Master Node**: Handles all write operations and replicates data to slave nodes
+- **Slave Nodes**: Read-only replicas that can be scaled dynamically
+- **PgPool-II**: Load balancer that distributes read queries across available replicas
+- **Configuration**: Customizable settings via environment variables
 
-To add more slaves, add new services to the docker-compose.yml file and adjust the PgPool configuration accordingly.
+![Architecture Diagram](https://mermaid.ink/img/pako:eNp1kc9qwzAMh1_F-JRBXvYIObSUlcIGG-w0fDBxlFppbOP8KaXk3efEyQ6j5CRL36cfkhx4bxXwhBvLsOdYG-nJmFp-UGigdqC1eYNKN1wqZi8pZEf2M1sYmj6JC0-5wj1c3ZcPRqxLXxVFlmXXF8_VqyiKebKiLNbFLNuKm2K5EMsbeI5VgQbdOC0UGcGxZuNMQ_YpN8d5mUcRt3DOkd0-WHK5j85MeJcRpxgRVKfZhArbCLYPPGZdkl4VHc-QhgXH9uB0zEdC4-pXOQXX4iGR8M7bVuPnhyP7Q1Wd4iVP-BdaWA8Xt_sFf9l5KP9K8kjhYOhP-wvj4XO9OCkJSeAgz5yNyANkY0XdOG1jIgZnO9Ae0iBqvpMjpvXgbQvJoHQHTn48AS2fnN4?type=png)
 
-## Security Notes
+## Prerequisites
 
-For production environments, make sure to:
-1. Change all default passwords in the `.env` file
-2. Consider enabling TLS/SSL by uncommenting and configuring the TLS options in docker-compose.yml
-3. Restrict network access to your database ports 
+- Docker and Docker Compose (v2.x or higher)
+- Git (to clone the repository)
+- PowerShell (for Windows) or Bash (for Linux/macOS)
+
+## Setup Instructions
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/postgres-cluster.git
+cd postgres-cluster
+```
+
+### 2. Configure Environment Variables
+
+The default settings are stored in the `.env` file. You can modify these settings before starting the cluster:
+
+```
+# PostgreSQL settings
+POSTGRES_USER=postgresadmin
+POSTGRES_PASSWORD=admin123
+POSTGRES_DB=postgresdb
+PGDATA=/data
+
+# Replication settings
+REPLICATION_USER=replication_user
+REPLICATION_PASSWORD=password
+
+# Port settings
+MASTER_PORT=5000
+SLAVE1_PORT=5001
+SLAVE2_PORT=5002
+PGPOOL_PORT=6432
+```
+
+> Note: When you add more replicas, the script will automatically add the necessary port settings to the `.env` file.
+
+## Usage
+
+### Starting the Cluster
+
+#### Windows (PowerShell)
+
+```powershell
+# Start with default 2 replicas
+.\start-cluster.ps1
+
+# Start with a custom number of replicas (e.g., 3)
+.\start-cluster.ps1 -ReplicaCount 3
+```
+
+#### Linux/macOS (Bash)
+
+```bash
+# Make scripts executable (if not already)
+chmod +x *.sh
+
+# Start with default 2 replicas
+./start-cluster.sh
+
+# Start with a custom number of replicas (e.g., 3)
+./start-cluster.sh 3
+```
+
+### Stopping the Cluster
+
+#### Windows (PowerShell)
+
+```powershell
+# Stop the cluster (keeping volumes for persistence)
+.\stop-cluster.ps1
+
+# Stop the cluster and remove all volumes (clean state)
+.\stop-cluster.ps1 -RemoveVolumes
+```
+
+#### Linux/macOS (Bash)
+
+```bash
+# Stop the cluster (keeping volumes for persistence)
+./stop-cluster.sh
+
+# Stop the cluster and remove all volumes (clean state)
+./stop-cluster.sh --remove-volumes
+```
+
+### Manually Generating Docker Compose File
+
+If you want to generate the Docker Compose file without starting the cluster:
+
+#### Windows (PowerShell)
+
+```powershell
+.\generate-compose.ps1 -ReplicaCount 4
+```
+
+#### Linux/macOS (Bash)
+
+```bash
+./generate-compose.sh 4
+```
+
+## Connecting to the Cluster
+
+### Direct Connection to Nodes
+
+- **Master Node**: `localhost:5000` (or the port specified in MASTER_PORT)
+- **Slave Node 1**: `localhost:5001` (or the port specified in SLAVE1_PORT)
+- **Slave Node 2**: `localhost:5002` (or the port specified in SLAVE2_PORT)
+- **Additional Slaves**: Ports are automatically assigned in sequence (5003, 5004, etc.)
+
+### Connection via Load Balancer
+
+- **PgPool-II**: `localhost:6432` (or the port specified in PGPOOL_PORT)
+
+The load balancer will distribute read queries to the available slave nodes while directing write queries to the master node.
+
+### Connection Examples
+
+Using `psql`:
+
+```bash
+# Connect to master
+psql -h localhost -p 5000 -U postgresadmin -d postgresdb
+
+# Connect via load balancer
+psql -h localhost -p 6432 -U postgresadmin -d postgresdb
+```
+
+## Storage and Data Persistence
+
+Data is stored in the following directories:
+
+- **Master**: `./master/pgdata`
+- **Slave 1**: `./slave-1/pgdata`
+- **Slave 2**: `./slave-2/pgdata`
+- **Additional Slaves**: `./slave-n/pgdata` (where n is the replica number)
+
+These directories are mounted as volumes in the Docker containers, ensuring data persistence between container restarts.
+
+## How It Works
+
+### Dynamic Replica Creation
+
+The system uses a template directory (`slave-template`) to create the necessary files for each replica:
+
+1. When you run `start-cluster.ps1` or `start-cluster.sh`, it calls `generate-compose.ps1` or `generate-compose.sh` with the desired number of replicas.
+2. The generate script creates the required directory structure and files for each replica.
+3. It then generates a `docker-compose.yml` file with the appropriate service definitions.
+4. It adds any missing port definitions to the `.env` file.
+
+### Replica Configuration
+
+Each replica is configured using the following mechanism:
+
+1. The replica receives a unique `REPLICA_ID` environment variable.
+2. The custom entrypoint script (`slave-entrypoint.sh`) uses this ID to configure appropriate replication settings.
+3. The replica connects to the master node and starts replicating data.
+
+### Load Balancing
+
+PgPool-II is configured to distribute read queries among all available replicas while directing write queries to the master node. The load balancer configuration includes:
+
+- Health checks to ensure only healthy nodes receive traffic
+- Connection pooling for better performance
+- Query caching for frequently executed queries
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Containers fail to start**:
+   - Check Docker logs: `docker-compose logs`
+   - Ensure ports are not already in use
+
+2. **Replication not working**:
+   - Check master logs: `docker-compose logs postgres-master`
+   - Check slave logs: `docker-compose logs postgres-slave1`
+
+3. **Load balancer issues**:
+   - Check pgpool logs: `docker-compose logs pgpool-loadbalancer`
+
+### Cleaning Up
+
+If you encounter persistent issues, you can clean up everything and start fresh:
+
+```bash
+# Windows (PowerShell)
+.\stop-cluster.ps1 -RemoveVolumes
+
+# Linux/macOS (Bash)
+./stop-cluster.sh --remove-volumes
+```
+
+## Customization
+
+### Adding Extensions
+
+The PostgreSQL configuration includes several pre-installed extensions:
+- pgvector for vector similarity search
+- TimescaleDB for time-series data
+- pgvectorscale for scaling vector operations
+
+If you need additional extensions, you can modify the Dockerfile in the template directory and rebuild the containers.
+
+### Performance Tuning
+
+The PostgreSQL configuration is set with reasonable defaults but can be tuned further:
+
+1. Edit the configuration in `slave-template/config/postgresql.conf`
+2. Regenerate the Docker Compose file and restart the cluster
+
+## License
+
+[MIT License](LICENSE)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. 
