@@ -15,7 +15,7 @@ done
 echo "PostgreSQL started. Checking for replication slots..."
 
 # Check and create replication slots if they don't exist
-PGPASSWORD="admin123" psql -U postgresadmin -d postgresdb -c "
+PGPASSWORD="${POSTGRES_PASSWORD}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = 'replica_slot_slave1') THEN

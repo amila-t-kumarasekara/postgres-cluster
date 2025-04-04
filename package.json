@@ -1,0 +1,30 @@
+{
+  "name": "postgres-cluster-config-generator",
+  "version": "1.0.0",
+  "description": "Configuration generator for PostgreSQL cluster",
+  "main": "generate-configs.ts",
+  "type": "module",
+  "scripts": {
+    "generate-configs": "npx tsx generate-configs.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amila-t-kumarasekara/postgres-cluster.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/amila-t-kumarasekara/postgres-cluster/issues"
+  },
+  "homepage": "https://github.com/amila-t-kumarasekara/postgres-cluster#readme"
+}

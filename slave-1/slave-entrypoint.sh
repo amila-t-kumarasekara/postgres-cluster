@@ -14,7 +14,7 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
   
   # Wait for replication user to be created on master
   # Try to connect to the master server as postgres admin first
-  until PGPASSWORD="admin123" psql -h postgres-master -U postgresadmin -d postgresdb -c '\q' 2>/dev/null; do
+  until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h postgres-master -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c '\q' 2>/dev/null; do
     echo "Cannot connect to master as admin. Waiting for master database to be fully initialized..."
     sleep 5
   done
@@ -22,19 +22,19 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
   echo "Connected to master as admin. Checking if replication user exists..."
   
   # Check if replication user exists
-  until PGPASSWORD="admin123" psql -h postgres-master -U postgresadmin -d postgresdb -c "SELECT 1 FROM pg_roles WHERE rolname='replication_user'" | grep -q 1; do
+  until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h postgres-master -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "SELECT 1 FROM pg_roles WHERE rolname='${REPLICATION_USER}'" | grep -q 1; do
     echo "Replication user does not exist yet. Creating replication user..."
-    PGPASSWORD="admin123" psql -h postgres-master -U postgresadmin -d postgresdb -c "CREATE USER replication_user WITH REPLICATION PASSWORD 'password' LOGIN; GRANT pg_monitor TO replication_user;" || echo "Failed to create user: $?"
+    PGPASSWORD="${POSTGRES_PASSWORD}" psql -h postgres-master -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "CREATE USER ${REPLICATION_USER} WITH REPLICATION PASSWORD '${REPLICATION_PASSWORD}' LOGIN; GRANT pg_monitor TO ${REPLICATION_USER};" || echo "Failed to create user: $?"
     sleep 5
   done
   
   echo "Replication user exists. Trying to connect as replication user..."
   
   # Now try to connect as replication user
-  until PGPASSWORD="$REPLICATION_PASSWORD" psql -h postgres-master -U "$REPLICATION_USER" -d postgresdb -c '\q' 2>/dev/null; do
+  until PGPASSWORD="$REPLICATION_PASSWORD" psql -h postgres-master -U "$REPLICATION_USER" -d "${POSTGRES_DB}" -c '\q' 2>/dev/null; do
     echo "Waiting for replication_user to be ready on master..."
-    echo "Attempting connection debug: PGPASSWORD=$REPLICATION_PASSWORD psql -h postgres-master -U $REPLICATION_USER -d postgresdb"
-    PGPASSWORD="$REPLICATION_PASSWORD" psql -h postgres-master -U "$REPLICATION_USER" -d postgresdb -c '\l' 2>&1 || echo "Connection failed with error code: $?"
+    echo "Attempting connection debug: PGPASSWORD=$REPLICATION_PASSWORD psql -h postgres-master -U $REPLICATION_USER -d ${POSTGRES_DB}"
+    PGPASSWORD="$REPLICATION_PASSWORD" psql -h postgres-master -U "$REPLICATION_USER" -d "${POSTGRES_DB}" -c '\l' 2>&1 || echo "Connection failed with error code: $?"
     sleep 5
   done
   

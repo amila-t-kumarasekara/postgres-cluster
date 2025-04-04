@@ -8,12 +8,12 @@ services:
       context: ./master
     container_name: postgres-master
     environment:
-      POSTGRES_USER: postgresadmin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: postgresdb
-      PGDATA: /data
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: ${PGDATA}
     ports:
-      - "5000:5432"
+      - "${MASTER_PORT}:5432"
     volumes:
       - ./master/pgdata:/data
       - ./master/config:/config
@@ -21,7 +21,7 @@ services:
     networks:
       - postgres-cluster-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgresadmin -d postgresdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,14 +31,14 @@ services:
       context: ./slave-1
     container_name: postgres-slave1
     environment:
-      POSTGRES_USER: postgresadmin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: postgresdb
-      PGDATA: /data
-      REPLICATION_USER: replication_user
-      REPLICATION_PASSWORD: password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: ${PGDATA}
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
     ports:
-      - "5001:5432"
+      - "${SLAVE1_PORT}:5432"
     volumes:
       - ./slave-1/pgdata:/data
       - ./slave-1/config:/config
@@ -49,7 +49,7 @@ services:
       postgres-master:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgresadmin -d postgresdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -59,14 +59,14 @@ services:
       context: ./slave-2
     container_name: postgres-slave2
     environment:
-      POSTGRES_USER: postgresadmin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: postgresdb
-      PGDATA: /data
-      REPLICATION_USER: replication_user
-      REPLICATION_PASSWORD: password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGDATA: ${PGDATA}
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
     ports:
-      - "5002:5432"
+      - "${SLAVE2_PORT}:5432"
     volumes:
       - ./slave-2/pgdata:/data
       - ./slave-2/config:/config
@@ -77,7 +77,7 @@ services:
       postgres-master:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgresadmin -d postgresdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -87,45 +87,45 @@ services:
     image: bitnami/pgpool:latest
     container_name: pgpool-loadbalancer
     ports:
-      - "6432:5432"
+      - "${PGPOOL_PORT}:5432"
     environment:
       PGPOOL_BACKEND_NODES: 0:postgres-master:5432:0,1:postgres-slave1:5432:2,2:postgres-slave2:5432:2
-      PGPOOL_SR_CHECK_USER: replication_user
-      PGPOOL_SR_CHECK_PASSWORD: password
-      PGPOOL_HEALTH_CHECK_USER: replication_user
-      PGPOOL_HEALTH_CHECK_PASSWORD: password
-      PGPOOL_HEALTH_CHECK_PERIOD: 30
-      PGPOOL_HEALTH_CHECK_TIMEOUT: 10
-      PGPOOL_HEALTH_CHECK_MAX_RETRIES: 3
-      PGPOOL_ADMIN_USERNAME: admin
-      PGPOOL_ADMIN_PASSWORD: password
-      PGPOOL_POSTGRES_USERNAME: postgresadmin
-      PGPOOL_POSTGRES_PASSWORD: admin123
-      PGPOOL_ENABLE_LOAD_BALANCING: "yes"
-      PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: "yes"
-      PGPOOL_ENABLE_LOG_CONNECTIONS: "yes"
-      PGPOOL_BACKEND_APPLICATION_NAME: "pgpool"
-      PGPOOL_BACKEND_FLOW_CONTROL: "yes"
-      PGPOOL_BACKEND_KEEPALIVE: "yes"
-      PGPOOL_BACKEND_KEEPALIVE_COUNT: 3
-      PGPOOL_BACKEND_KEEPALIVE_INTERVAL: 30
-      PGPOOL_BACKEND_KEEPALIVE_MODE: "transaction"
-      PGPOOL_CONNECT_TIMEOUT: 30
-      PGPOOL_SOCKET_TIMEOUT: 30
-      PGPOOL_POOL_MODE: "transaction"
-      PGPOOL_MAX_POOL: 4
-      PGPOOL_NUM_INIT_CHILDREN: 32
-      PGPOOL_CHILD_LIFE_TIME: 300
-      PGPOOL_CHILD_MAX_CONNECTIONS: 1000
+      PGPOOL_SR_CHECK_USER: ${REPLICATION_USER}
+      PGPOOL_SR_CHECK_PASSWORD: ${REPLICATION_PASSWORD}
+      PGPOOL_HEALTH_CHECK_USER: ${REPLICATION_USER}
+      PGPOOL_HEALTH_CHECK_PASSWORD: ${REPLICATION_PASSWORD}
+      PGPOOL_HEALTH_CHECK_PERIOD: ${PGPOOL_HEALTH_CHECK_PERIOD}
+      PGPOOL_HEALTH_CHECK_TIMEOUT: ${PGPOOL_HEALTH_CHECK_TIMEOUT}
+      PGPOOL_HEALTH_CHECK_MAX_RETRIES: ${PGPOOL_HEALTH_CHECK_MAX_RETRIES}
+      PGPOOL_ADMIN_USERNAME: ${PGPOOL_ADMIN_USERNAME}
+      PGPOOL_ADMIN_PASSWORD: ${PGPOOL_ADMIN_PASSWORD}
+      PGPOOL_POSTGRES_USERNAME: ${POSTGRES_USER}
+      PGPOOL_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGPOOL_ENABLE_LOAD_BALANCING: "${PGPOOL_ENABLE_LOAD_BALANCING}"
+      PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT: "${PGPOOL_ENABLE_LOG_PER_NODE_STATEMENT}"
+      PGPOOL_ENABLE_LOG_CONNECTIONS: "${PGPOOL_ENABLE_LOG_CONNECTIONS}"
+      PGPOOL_BACKEND_APPLICATION_NAME: "${PGPOOL_BACKEND_APPLICATION_NAME}"
+      PGPOOL_BACKEND_FLOW_CONTROL: "${PGPOOL_BACKEND_FLOW_CONTROL}"
+      PGPOOL_BACKEND_KEEPALIVE: "${PGPOOL_BACKEND_KEEPALIVE}"
+      PGPOOL_BACKEND_KEEPALIVE_COUNT: ${PGPOOL_BACKEND_KEEPALIVE_COUNT}
+      PGPOOL_BACKEND_KEEPALIVE_INTERVAL: ${PGPOOL_BACKEND_KEEPALIVE_INTERVAL}
+      PGPOOL_BACKEND_KEEPALIVE_MODE: "${PGPOOL_BACKEND_KEEPALIVE_MODE}"
+      PGPOOL_CONNECT_TIMEOUT: ${PGPOOL_CONNECT_TIMEOUT}
+      PGPOOL_SOCKET_TIMEOUT: ${PGPOOL_SOCKET_TIMEOUT}
+      PGPOOL_POOL_MODE: "${PGPOOL_POOL_MODE}"
+      PGPOOL_MAX_POOL: ${PGPOOL_MAX_POOL}
+      PGPOOL_NUM_INIT_CHILDREN: ${PGPOOL_NUM_INIT_CHILDREN}
+      PGPOOL_CHILD_LIFE_TIME: ${PGPOOL_CHILD_LIFE_TIME}
+      PGPOOL_CHILD_MAX_CONNECTIONS: ${PGPOOL_CHILD_MAX_CONNECTIONS}
       # Memory Cache settings
-      PGPOOL_MEMORY_CACHE_ENABLED: "yes"
-      PGPOOL_MEMQCACHE_METHOD: "shmem"
-      PGPOOL_MEMQCACHE_TOTAL_SIZE: "512MB"
-      PGPOOL_MEMQCACHE_MAX_NUM_CACHE: "10000"
-      PGPOOL_MEMQCACHE_EXPIRE: "300"
-      PGPOOL_MEMQCACHE_AUTO_CACHE_INVALIDATION: "yes"
-      PGPOOL_MEMQCACHE_MAXCACHE: "400KB"
-      PGPOOL_MEMQCACHE_CACHE_BLOCK_SIZE: "1MB"
+      PGPOOL_MEMORY_CACHE_ENABLED: "${PGPOOL_MEMORY_CACHE_ENABLED}"
+      PGPOOL_MEMQCACHE_METHOD: "${PGPOOL_MEMQCACHE_METHOD}"
+      PGPOOL_MEMQCACHE_TOTAL_SIZE: "${PGPOOL_MEMQCACHE_TOTAL_SIZE}"
+      PGPOOL_MEMQCACHE_MAX_NUM_CACHE: "${PGPOOL_MEMQCACHE_MAX_NUM_CACHE}"
+      PGPOOL_MEMQCACHE_EXPIRE: "${PGPOOL_MEMQCACHE_EXPIRE}"
+      PGPOOL_MEMQCACHE_AUTO_CACHE_INVALIDATION: "${PGPOOL_MEMQCACHE_AUTO_CACHE_INVALIDATION}"
+      PGPOOL_MEMQCACHE_MAXCACHE: "${PGPOOL_MEMQCACHE_MAXCACHE}"
+      PGPOOL_MEMQCACHE_CACHE_BLOCK_SIZE: "${PGPOOL_MEMQCACHE_CACHE_BLOCK_SIZE}"
       PGPOOL_WHITE_MEMQCACHE_TABLE_LIST: ""
       PGPOOL_BLACK_MEMQCACHE_TABLE_LIST: ""
       # PGPOOL_ENABLE_TLS: "yes"

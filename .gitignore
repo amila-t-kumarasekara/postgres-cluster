@@ -7,3 +7,6 @@ archive/
 *.csr
 *.pem
 *.csr
+.env
+node_modules/
+package-lock.json
