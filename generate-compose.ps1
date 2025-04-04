@@ -62,10 +62,10 @@ services:
 # Add slave replicas
 for ($i = 1; $i -le $ReplicaCount; $i++) {
     $slaveYaml = @"
-  postgres-slave$i:
+  postgres-slave$($i):
     build:
       context: ./slave-$i
-    container_name: postgres-slave$i
+    container_name: postgres-slave$($i)
     environment:
       POSTGRES_USER: `${POSTGRES_USER}
       POSTGRES_PASSWORD: `${POSTGRES_PASSWORD}
@@ -75,7 +75,7 @@ for ($i = 1; $i -le $ReplicaCount; $i++) {
       REPLICATION_PASSWORD: `${REPLICATION_PASSWORD}
       REPLICA_ID: "$i"
     ports:
-      - "`${SLAVE$($i)_PORT}:5432"
+      - "${SLAVE$($i)_PORT}:5432"
     volumes:
       - ./slave-$i/pgdata:/data
       - ./slave-$i/config:/config
@@ -98,10 +98,16 @@ for ($i = 1; $i -le $ReplicaCount; $i++) {
 # Build pgpool backend nodes configuration
 $backendNodes = "0:postgres-master:5432:0"
 for ($i = 1; $i -le $ReplicaCount; $i++) {
-    $backendNodes += ",$i:postgres-slave$i:5432:2"
+    $backendNodes += ",$i:postgres-slave$($i):5432:2"
 }
 
-# Add pgpool loadbalancer
+# Build the dependencies section for pgpool
+$pgpoolDependsOn = "      postgres-master:`n        condition: service_healthy`n"
+for ($i = 1; $i -le $ReplicaCount; $i++) {
+    $pgpoolDependsOn += "      postgres-slave$($i):`n        condition: service_healthy`n"
+}
+
+# Add pgpool loadbalancer with all dependencies
 $pgpoolYaml = @"
   pgpool-loadbalancer:
     image: bitnami/pgpool:latest
@@ -154,20 +160,8 @@ $pgpoolYaml = @"
     networks:
       - postgres-cluster-network
     depends_on:
+$pgpoolDependsOn
 "@
-
-# Add pgpool dependencies
-$pgpoolYaml += @"
-      postgres-master:
-        condition: service_healthy
-"@
-
-for ($i = 1; $i -le $ReplicaCount; $i++) {
-    $pgpoolYaml += @"
-      postgres-slave$i:
-        condition: service_healthy
-"@
-}
 
 $composeYaml += $pgpoolYaml
 

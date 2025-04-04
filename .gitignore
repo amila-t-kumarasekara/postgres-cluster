@@ -10,3 +10,4 @@ archive/
 .env
 node_modules/
 package-lock.json
+slave-*/
