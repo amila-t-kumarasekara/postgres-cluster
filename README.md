@@ -11,7 +11,7 @@ The cluster consists of the following components:
 - **PgPool-II**: Load balancer that distributes read queries across available replicas
 - **Configuration**: Customizable settings via environment variables
 
-![Architecture Diagram](https://mermaid.ink/img/pako:eNp1kc9qwzAMh1_F-JRBXvYIObSUlcIGG-w0fDBxlFppbOP8KaXk3efEyQ6j5CRL36cfkhx4bxXwhBvLsOdYG-nJmFp-UGigdqC1eYNKN1wqZi8pZEf2M1sYmj6JC0-5wj1c3ZcPRqxLXxVFlmXXF8_VqyiKebKiLNbFLNuKm2K5EMsbeI5VgQbdOC0UGcGxZuNMQ_YpN8d5mUcRt3DOkd0-WHK5j85MeJcRpxgRVKfZhArbCLYPPGZdkl4VHc-QhgXH9uB0zEdC4-pXOQXX4iGR8M7bVuPnhyP7Q1Wd4iVP-BdaWA8Xt_sFf9l5KP9K8kjhYOhP-wvj4XO9OCkJSeAgz5yNyANkY0XdOG1jIgZnO9Ae0iBqvpMjpvXgbQvJoHQHTn48AS2fnN4?type=png)
+![Architecture Diagram](https://app.eraser.io/workspace/LdfqPTIaYify3nM4I4Ek?origin=share)
 
 ## Prerequisites
 
