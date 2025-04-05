@@ -43,6 +43,7 @@ services:
       POSTGRES_PASSWORD: `${POSTGRES_PASSWORD}
       POSTGRES_DB: `${POSTGRES_DB}
       PGDATA: `${PGDATA}
+      REPLICATION_COUNT: `${REPLICATION_COUNT}
     ports:
       - "`${MASTER_PORT}:5432"
     volumes:
@@ -98,7 +99,7 @@ for ($i = 1; $i -le $ReplicaCount; $i++) {
 # Build pgpool backend nodes configuration
 $backendNodes = "0:postgres-master:5432:0"
 for ($i = 1; $i -le $ReplicaCount; $i++) {
-    $backendNodes += ",$i:postgres-slave$($i):5432:$i"
+    $backendNodes += ",${i}:postgres-slave$($i):5432:$i"
 }
 
 # Build the dependencies section for pgpool

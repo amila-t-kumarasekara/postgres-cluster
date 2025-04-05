@@ -17,7 +17,7 @@ const {
   REPLICATION_PASSWORD,
   PG_HBA_AUTH_METHOD = 'scram-sha-256', // Default to scram-sha-256 if not set
   LOCAL_AUTH_METHOD = 'trust',          // Default to trust for local connections
-  REPLIACTION_COUNT = 2,
+  REPLICATION_COUNT,
 } = process.env;
 
 // Create directories if they don't exist
@@ -35,7 +35,7 @@ dirs.forEach(dir => {
 
 let replicationSlots = '';
 
-for (let i = 1; i <= Number(REPLIACTION_COUNT); i++) {
+for (let i = 1; i <= Number(REPLICATION_COUNT ?? 2); i++) {
   replicationSlots += `SELECT pg_create_physical_replication_slot('replica_slot_slave${i}', true);`;
 }
 // Generate init.sql
@@ -88,16 +88,33 @@ host    all             ${REPLICATION_USER}         0.0.0.0/0        md5
 host all all all ${PG_HBA_AUTH_METHOD}
 `;
 
-for (let i = 0; i <= Number(REPLIACTION_COUNT); i++) {
+for (let i = 1; i <= Number(REPLICATION_COUNT ?? 2); i++) {
   const postgresqlAutoConf = `primary_conninfo = 'host=postgres-master port=5432 user=${REPLICATION_USER} password=${REPLICATION_PASSWORD} application_name=slave${i}'
 primary_slot_name = 'replica_slot_slave${i}'
 `;
 
   fs.writeFileSync(path.join(__dirname, `slave-${i}/config/postgresql.auto.conf`), postgresqlAutoConf, 'utf8');
+  
+  console.log(`Writing postgresql.auto.conf for slave-${i}`);
 
-  //move pg_hba.conf and pg_ident.conf from slave-template to slave-${i}
-  fs.copyFileSync(path.join(__dirname, 'slave-template/config/pg_hba.conf'), path.join(__dirname, `slave-${i}/config/pg_hba.conf`));
-  fs.copyFileSync(path.join(__dirname, 'slave-template/config/pg_ident.conf'), path.join(__dirname, `slave-${i}/config/pg_ident.conf`));
+  //copy pg_hba.conf and pg_ident.conf from slave-template to slave-${i}
+  console.log(`Attempting to copy config files from slave-template to slave-${i}`);
+  
+  const sourcePgHba = path.join(__dirname, 'slave-template/config/pg_hba.conf');
+  const destPgHba = path.join(__dirname, `slave-${i}/config/pg_hba.conf`);
+  const sourcePgIdent = path.join(__dirname, 'slave-template/config/pg_ident.conf');
+  const destPgIdent = path.join(__dirname, `slave-${i}/config/pg_ident.conf`);
+  
+  console.log(`Copying from ${sourcePgHba} to ${destPgHba}`);
+  console.log(`Copying from ${sourcePgIdent} to ${destPgIdent}`);
+  
+  try {
+    fs.copyFileSync(sourcePgHba, destPgHba);
+    fs.copyFileSync(sourcePgIdent, destPgIdent);
+    console.log(`Successfully copied config files for slave-${i}`);
+  } catch (error) {
+    console.error(`Error copying files for slave-${i}:`, error);
+  }
 }
 
 // Write the files
