@@ -98,7 +98,7 @@ for ($i = 1; $i -le $ReplicaCount; $i++) {
 # Build pgpool backend nodes configuration
 $backendNodes = "0:postgres-master:5432:0"
 for ($i = 1; $i -le $ReplicaCount; $i++) {
-    $backendNodes += ",$i:postgres-slave$($i):5432:2"
+    $backendNodes += ",$i:postgres-slave$($i):5432:$i"
 }
 
 # Build the dependencies section for pgpool

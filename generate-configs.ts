@@ -17,6 +17,7 @@ const {
   REPLICATION_PASSWORD,
   PG_HBA_AUTH_METHOD = 'scram-sha-256', // Default to scram-sha-256 if not set
   LOCAL_AUTH_METHOD = 'trust',          // Default to trust for local connections
+  REPLIACTION_COUNT = 2,
 } = process.env;
 
 // Create directories if they don't exist
@@ -32,6 +33,11 @@ dirs.forEach(dir => {
   }
 });
 
+let replicationSlots = '';
+
+for (let i = 1; i <= Number(REPLIACTION_COUNT); i++) {
+  replicationSlots += `SELECT pg_create_physical_replication_slot('replica_slot_slave${i}', true);`;
+}
 // Generate init.sql
 const initSql = `-- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -52,8 +58,7 @@ CREATE USER ${REPLICATION_USER} WITH REPLICATION PASSWORD '${REPLICATION_PASSWOR
 GRANT pg_monitor TO ${REPLICATION_USER};
 
 -- Create replication slots for slaves
-SELECT pg_create_physical_replication_slot('replica_slot_slave1', true);
-SELECT pg_create_physical_replication_slot('replica_slot_slave2', true);
+${replicationSlots}
 
 -- SELECT * FROM pg_stat_replication;
 -- ALTER SYSTEM SET synchronous_standby_names TO  '*';  
@@ -83,20 +88,20 @@ host    all             ${REPLICATION_USER}         0.0.0.0/0        md5
 host all all all ${PG_HBA_AUTH_METHOD}
 `;
 
-// Generate postgresql.auto.conf for slave1
-const postgresqlAutoConfSlave1 = `primary_conninfo = 'host=postgres-master port=5432 user=${REPLICATION_USER} password=${REPLICATION_PASSWORD} application_name=slave1'
-primary_slot_name = 'replica_slot_slave1'
+for (let i = 0; i <= Number(REPLIACTION_COUNT); i++) {
+  const postgresqlAutoConf = `primary_conninfo = 'host=postgres-master port=5432 user=${REPLICATION_USER} password=${REPLICATION_PASSWORD} application_name=slave${i}'
+primary_slot_name = 'replica_slot_slave${i}'
 `;
 
-// Generate postgresql.auto.conf for slave2
-const postgresqlAutoConfSlave2 = `primary_conninfo = 'host=postgres-master port=5432 user=${REPLICATION_USER} password=${REPLICATION_PASSWORD} application_name=slave2'
-primary_slot_name = 'replica_slot_slave2'
-`;
+  fs.writeFileSync(path.join(__dirname, `slave-${i}/config/postgresql.auto.conf`), postgresqlAutoConf, 'utf8');
+
+  //move pg_hba.conf and pg_ident.conf from slave-template to slave-${i}
+  fs.copyFileSync(path.join(__dirname, 'slave-template/config/pg_hba.conf'), path.join(__dirname, `slave-${i}/config/pg_hba.conf`));
+  fs.copyFileSync(path.join(__dirname, 'slave-template/config/pg_ident.conf'), path.join(__dirname, `slave-${i}/config/pg_ident.conf`));
+}
 
 // Write the files
 fs.writeFileSync(path.join(__dirname, 'master/config/init.sql'), initSql, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'master/config/pg_hba.conf'), pgHbaConf, 'utf8');
-fs.writeFileSync(path.join(__dirname, 'slave-1/config/postgresql.auto.conf'), postgresqlAutoConfSlave1, 'utf8');
-fs.writeFileSync(path.join(__dirname, 'slave-2/config/postgresql.auto.conf'), postgresqlAutoConfSlave2, 'utf8');
 
 console.log('PostgreSQL configuration files generated successfully!'); 
