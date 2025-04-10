@@ -182,6 +182,18 @@ PgPool-II is configured to distribute read queries among all available replicas 
 - Connection pooling for better performance
 - Query caching for frequently executed queries
 
+## Connection Modes
+
+PgPool-II supports different connection modes that affect how connections are managed and their performance characteristics:
+
+| Mode | Connection Held For | Use Temporary Tables? | Use Session Settings? | Performance | Best For |
+|------|---------------------|----------------------|----------------------|-------------|----------|
+| session | Entire client session | ✅ Yes | ✅ Yes | ❌ Lowest | Legacy apps, complex session logic |
+| transaction | One transaction at a time | ❌ No | ⚠️ Limited | ✅ Balanced | Web apps, ORMs, REST/GraphQL APIs |
+| statement | One SQL statement | ❌ No | ❌ No | 🚀 Fastest | Read-heavy, stateless microservices |
+
+Choose the appropriate connection mode based on your application's requirements and performance needs.
+
 ## Troubleshooting
 
 ### Common Issues
