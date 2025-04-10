@@ -38,6 +38,24 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
+# Install hypopg
+RUN cd /tmp \
+    && git clone https://github.com/HypoPG/hypopg.git \
+    && cd hypopg \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/hypopg
+
+# Install index_advisor
+RUN cd /tmp \
+    && git clone https://github.com/supabase/index_advisor.git \
+    && cd index_advisor \
+    && make \
+    && make install \
+    && cd / \
+    && rm -rf /tmp/index_advisor
+
 COPY config/postgresql.conf /config/postgresql.conf
 COPY config/init.sql /docker-entrypoint-initdb.d/init.sql
 COPY config/pg_hba.conf /config/pg_hba.conf

@@ -48,9 +48,6 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 -- Add vectorscale extension
 CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
 
--- -- Add pg_pgbouncer extension
--- CREATE EXTENSION IF NOT EXISTS pg_pgbouncer;   
-
 -- Create a replication user
 CREATE USER ${REPLICATION_USER} WITH REPLICATION PASSWORD '${REPLICATION_PASSWORD}' LOGIN;
 
